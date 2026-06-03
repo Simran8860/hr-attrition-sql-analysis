@@ -14,9 +14,6 @@
 6. [KPI Framework](#kpi-framework)
 7. [Key Business Insights](#key-business-insights)
 8. [Workforce Recommendations](#workforce-recommendations)
-9. [Project Structure](#project-structure)
-10. [Interview Preparation](#interview-preparation)
-11. [Future Improvements](#future-improvements)
 
 ---
 
@@ -124,39 +121,8 @@ workforce-analytics-sql/
 │
 ├── README.md
 ├── data/
-│   └── Employee.csv
-│
 ├── sql/
-│   ├── 00_staging/
-│   │   └── stg_employee.sql          ← Single source of truth view
-│   │
-│   ├── 01_core_kpis/
-│   │   ├── vw_department_kpis.sql
-│   │   └── vw_jobrole_attrition.sql
-│   │
-│   ├── 02_advanced_analytics/
-│   │   ├── vw_salary_attrition.sql
-│   │   ├── vw_overtime_impact.sql
-│   │   ├── vw_tenure_attrition.sql
-│   │   ├── vw_high_risk_employees.sql
-│   │   ├── vw_cohort_analysis.sql
-│   │   ├── vw_demographic_attrition.sql
-│   │   └── vw_promotion_stagnation.sql
-│   │
-│   ├── 03_workforce_health/
-│   │   ├── vw_dept_performance_index.sql
-│   │   ├── vw_rolling_attrition_trend.sql
-│   │   └── vw_workforce_stability.sql
-│   │
-│   └── 04_executive_insights/
-│       ├── vw_retention_kpis.sql
-│       ├── exec_financial_cost_model.sql
-│       ├── exec_high_risk_watchlist.sql
-│       └── exec_overtime_satisfaction.sql
-│
 └── docs/
-    ├── business_recommendations.md
-    └── kpi_dictionary.md
 ```
 
 ---
@@ -275,86 +241,5 @@ Flight Risk Score 3  → Manager conversation + development plan review
 Flight Risk Score 2  → Include in next engagement cycle monitoring
 Flight Risk Score 0-1 → Standard monitoring
 ```
-
----
-
-## Interview Preparation
-
-### SQL Technical Questions
-
-**Q: Why did you build a staging view instead of querying the raw table directly?**
-
-> The staging view (`stg_employee`) is the most important architectural decision in the project. It does three things: (1) it centralises all derived field logic — salary bands, flight risk score, tenure bands — so if a business rule changes, I update it in one place, not across 12 queries; (2) it enforces a clean separation between raw data and analytical logic; (3) it mirrors how a real dbt/Medallion architecture would work in production, where a staging layer normalises source data before it reaches analytical consumers. Any recruiter who has worked in an actual analytics team will recognise this pattern immediately.
-
-**Q: Explain your flight_risk_score calculation. Why those specific factors?**
-
-> The score sums five binary indicators: overtime, low job satisfaction (≤2), poor work-life balance (≤2), career stagnation (>3 years without promotion), and low environment satisfaction (≤2). Each factor has empirical backing in HR research as a predictor of voluntary attrition. The composite score gives a 0–5 range, which I then bucket into CRITICAL/HIGH/MEDIUM/LOW risk tiers. A key design decision was keeping it interpretable — five factors a manager can actually act on — rather than a black-box score. In a production environment, I'd calibrate the weights using logistic regression on historical attrition data.
-
-**Q: When would you use RANK() vs DENSE_RANK() vs ROW_NUMBER()?**
-
-> `ROW_NUMBER()` assigns a unique sequential integer regardless of ties — I use it in `vw_high_risk_employees` where I need exactly one watchlist position per employee. `RANK()` skips numbers after ties (1,1,3) — I use it for department-level rankings where tied departments should see the same rank and the skip communicates "these are equivalent." `DENSE_RANK()` doesn't skip (1,1,2) — I use it in `vw_jobrole_attrition` where I don't want gaps to mislead a reader into thinking there are missing roles.
-
-**Q: How does your rolling average work, and why a 3-band window?**
-
-> The rolling average uses `AVG() OVER (ORDER BY sort_order ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)`. This creates a 3-period moving average that smooths out single-band noise — a common technique in time-series analysis. In this dataset, tenure bands replace time periods, so the "rolling" dimension is tenure progression rather than calendar time. Three periods is the standard for small datasets; with monthly calendar data I would extend to 6 or 12 months.
-
-**Q: Why use NULLIF() in the promotion stagnation query?**
-
-> `NULLIF(stagnant_count, 0)` prevents a divide-by-zero error when computing the stagnant attrition rate for segments where no one is stagnant. Without it, MySQL would throw an error or return NULL unexpectedly. It's a defensive coding practice that makes queries production-safe — critical if this view is embedded in a dashboard that auto-refreshes.
-
----
-
-### Business Analytics Questions
-
-**Q: How would you present this analysis to a non-technical CHRO?**
-
-> I'd lead with the financial number — "We're likely spending $10–20M annually replacing employees who leave." Then I'd show three visuals: (1) the department risk leaderboard, (2) the overtime-attrition connection as a simple bar chart, and (3) the high-risk watchlist as a prioritised action list. I wouldn't show a single SQL query. The analytical depth shows in the accuracy and specificity of the insights, not in the code. The ask at the end would be specific: "Approve a 90-day intervention programme for the 47 CRITICAL-risk employees."
-
-**Q: What's the difference between correlation and causation in this analysis?**
-
-> This is observational data, so all findings are correlational. I cannot claim that overtime *causes* attrition — it's possible that already-disengaged employees are assigned more overtime, creating reverse causality. To establish causation I'd need an experimental design (e.g., a controlled overtime reduction pilot in one department) or natural experiment data. In the recommendations I am careful to say "overtime correlates with attrition at 2x the rate" rather than "overtime causes attrition."
-
----
-
-### Stakeholder Questions
-
-**Q: A VP of Sales pushes back: "Our attrition is high because we hire young people who leave after 2 years — it's industry standard." How do you respond?**
-
-> I'd validate the hypothesis with data first. I'd segment Sales attrition by age and tenure to test whether the pattern holds only in early-career employees or extends to mid-career staff. If Sales attrition in the 3–7 year tenure band is also elevated, that's evidence beyond industry baseline behaviour. I'd also ask the VP to share external benchmarks — if the industry average Sales attrition is 25% and we're at 22%, the conversation changes. The goal isn't to win the argument; it's to reach the right diagnostic conclusion together.
-
----
-
-## Future Improvements
-
-| Improvement | Type | Estimated Impact |
-|---|---|---|
-| Integrate time-series data (monthly snapshots) to replace tenure-as-proxy | Data | High — enables true trend analysis |
-| Logistic regression model for attrition probability (Python + SQL) | Modelling | High — upgrades from descriptive to predictive |
-| dbt model conversion (staging → marts) | Architecture | Medium — production-grade data pipeline |
-| Power BI / Tableau dashboard connected to views | Visualisation | High — makes project end-to-end demonstrable |
-| Cost model calibration with actual industry salary data | Business | Medium — improves financial estimate accuracy |
-| Manager effectiveness index (team attrition + satisfaction combined) | Analytics | Medium — adds people manager dimension |
-| Survival analysis: time-to-attrition modelling | Advanced Analytics | High — identifies exact intervention timing |
-
----
-
-## Key Design Decisions
-
-**1. Staging view as single source of truth**  
-All business logic (bands, scores, flags) lives in `stg_employee`. No downstream view contains derived field definitions. This means a business rule change requires editing exactly one view.
-
-**2. Views over stored procedures**  
-Views are readable, debuggable, and chainable. For a portfolio project demonstrating SQL logic, views show the analytical thinking more clearly than procedural code.
-
-**3. Flight risk score kept interpretable**  
-A 0–5 additive score with named factors is immediately actionable by a non-technical HR manager. A black-box ML score would be more accurate but less adoptable in a real HR context.
-
-**4. NULLIF() for division safety**  
-Every division operation involving a potentially-zero denominator uses `NULLIF()` rather than a `WHERE` filter that would silently drop rows.
-
-**5. HAVING to suppress micro-segments**  
-Segments with fewer than 5 employees produce statistically unreliable attrition rates (e.g., a team of 2 where 1 person left = 50% "attrition"). The `HAVING COUNT(*) >= 5` filter prevents misleading executive reporting.
-
----
 
 *Built with MySQL 8.0 | Dataset: IBM HR Analytics (Kaggle) | Author: Simran Tyagi*
