@@ -45,21 +45,19 @@ The core questions this analysis answers:
 ```
 hr-attrition-analysis/
 ├── README.md
-├── data/
-│   └── Employee.csv
-└── sql/
-    └── hr_attrition_analysis.sql
+├── Employee.csv
+└── hr_attrition_analysis.sql
 ```
 
 The SQL file is organised into five clearly commented sections:
 
 | Section | What it covers |
 |---|---|
-| 1 — Base View | Reusable view with derived fields (age groups, tenure bands, salary bands) |
-| 2 — Core Attrition Analysis | Overall rate, by department, by job role |
-| 3 — Workforce Segmentation | Age, tenure, salary band, demographic breakdowns |
-| 4 — Attrition Driver Analysis | Overtime, job satisfaction, promotions, work-life balance, travel |
-| 5 — At-Risk Employee Identification | Multi-factor risk profiling of current employees |
+| 1. Base View | Reusable view with derived fields (age groups, tenure bands, salary bands) |
+| 2. Core Attrition Analysis | Overall rate, by department, by job role |
+| 3. Workforce Segmentation | Age, tenure, salary band, demographic breakdowns |
+| 4. Attrition Driver Analysis | Overtime, job satisfaction, promotions, work-life balance, travel |
+| 5. At-Risk Employee Identification | Multi-factor risk profiling of current employees |
 
 ---
 
@@ -112,7 +110,6 @@ The SQL file is organised into five clearly commented sections:
 - Add a **Tableau or Power BI dashboard** connecting directly to the SQL views for visual reporting
 - Incorporate **time-series data** (monthly snapshots) to track attrition trends over time rather than using tenure as a proxy
 - Build a **Python analysis layer** with logistic regression to predict attrition probability per employee
-- Add an **education field analysis** — does field of study affect which roles employees leave for?
 
 ---
 
